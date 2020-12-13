@@ -15,6 +15,7 @@ from graph_conversion import *
 from metrics import *
 from models.GEFA import GEFA
 from models.GLFA import GLFA
+from models.GEFA_HGAN import GEFA_HGAN
 
 num_feat_xp = 0
 num_feat_xd = 0
@@ -33,7 +34,7 @@ print('Embedding.') if config.is_emb_in_graph else print('')
 dataset = config.dataset
 print('Dataset: ', dataset)
 
-modeling = [GEFA,
+modeling = [GEFA_HGAN,GEFA,
             GLFA][config.run_model]
 model_st = modeling.__name__
 
