@@ -24,6 +24,8 @@ model_name_seq = '_seq' if config.is_seq_in_graph is True else ''
 model_name_con = '_con' if config.is_con_in_graph is True else ''
 model_name_profile = '_pf' if config.is_profile_in_graph is True else ''
 model_name_emb = '_emb' if config.is_emb_in_graph is True else ''
+plot_drug = config.to_plot_drug
+plot_prot = config.to_plot_prot
 
 print('Using features: ')
 print('Sequence.') if config.is_seq_in_graph else print('')
@@ -167,8 +169,7 @@ for opt in opts:
 pdbs_tseqs = set(zip(pdbs, pdbs_seqs, compound_iso_smiles, all_labels))
 
 dta_graph = {}
-print('Pre-processing protein')
-print('Pre-processing...')
+print('Pre-processing protein...')
 saved_prot_graph = {}
 if os.path.isfile('saved_prot_graph.pickle'):
     print("Load pre-processed file for protein graph")
@@ -180,7 +181,7 @@ else:
             contactmap = np.load('data/' + dataset + '/map/' + target + '.npy')
         else:
             raise FileNotFoundError
-        c_size, features, edge_index, edge_weight = prot_to_graph(seq, contactmap, target, dataset)
+        c_size, features, edge_index, edge_weight = prot_to_graph(seq, contactmap, target, target + '.jpg', plot_prot, dataset)
         g = DATA.Data(
             x=torch.Tensor(features),
             edge_index=torch.LongTensor(edge_index).transpose(1, 0),
@@ -190,6 +191,8 @@ else:
         saved_prot_graph[target] = g
     with open('saved_prot_graph.pickle', 'wb') as handle:
         pickle.dump(saved_prot_graph, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+print('Pre-processing smiles...')
 saved_drug_graph = {}
 if os.path.isfile('saved_drug_graph.pickle'):
     print("Load pre-processed file for drug graph")
@@ -197,7 +200,7 @@ if os.path.isfile('saved_drug_graph.pickle'):
         saved_drug_graph = pickle.load(handle)
 else:
     for smiles in compound_iso_smiles:
-        c_size2, features2, edge_index2 = smile_to_graph(smiles)
+        c_size2, features2, edge_index2 = smile_to_graph(smiles, smiles + '.jpg', plot_drug)
         g2 = DATA.Data(
             x=torch.Tensor(features2),
             edge_index=torch.LongTensor(edge_index2).transpose(1, 0),
@@ -205,7 +208,13 @@ else:
         saved_drug_graph[smiles] = g2
     with open('saved_drug_graph.pickle', 'wb') as handle:
         pickle.dump(saved_drug_graph, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+print("Extracting from pre-processed Data...")
+print(len(pdbs_tseqs))
+index = 1
 for target, seq, smile, label in pdbs_tseqs:
+    print("Extracting", index, "...")
+    index+=1
     g = copy.deepcopy(saved_prot_graph[target])
     g2 = copy.deepcopy(saved_drug_graph[smile])
     g.y = torch.FloatTensor([label])
@@ -213,7 +222,7 @@ for target, seq, smile, label in pdbs_tseqs:
     dta_graph[(target, smile)] = [g, g2]
     num_feat_xp = g.x.size()[1]
     num_feat_xd = g2.x.size()[1]
-
+    print("xp:", num_feat_xp, "| xd:", num_feat_xd)
 # Main program: iterate over different datasets  and encoding types:
 
 print('\nRunning on ', model_st + '_' + dataset)

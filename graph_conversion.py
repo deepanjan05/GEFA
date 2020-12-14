@@ -1,7 +1,10 @@
 from rdkit import Chem
 import networkx as nx
 import config
+import os
 import numpy as np
+
+from plot_graph import plot
 
 def one_of_k_encoding(x, allowable_set):
     if x not in allowable_set:
@@ -33,20 +36,30 @@ def atom_features(atom):
     return np.array(results)
 
 
-def smile_to_graph(smile):
+def smile_to_graph(smile, file_, plot_):
     mol = Chem.MolFromSmiles(smile)
 
     c_size = mol.GetNumAtoms()
 
     features = []
-    for atom in mol.GetAtoms():
+    labels = {}
+    for i, atom in enumerate(mol.GetAtoms()):
+        labels[i] = atom.GetSymbol()
         feature = atom_features(atom)
         features.append(feature / sum(feature))
 
     edges = []
     for bond in mol.GetBonds():
         edges.append([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
-    g = nx.Graph(edges).to_directed()
+    g = nx.Graph(edges)
+    if plot_:
+        try:
+            if not os.path.isdir('smiles'):
+                os.makedirs('smiles')
+            plot(g, labels, 'smiles/' + file_)     # Plot the molecular graph created 
+        except:
+            pass
+    g = g.to_directed()
     edge_index = []
     for e1, e2 in g.edges:
         edge_index.append([e1, e2])
@@ -96,7 +109,7 @@ def aa_ss_feature(target, dataset='davis'):
     return np.asarray(feature)
 
 
-def prot_to_graph(seq, prot_contactmap, prot_target, dataset='davis'):
+def prot_to_graph(seq, prot_contactmap, prot_target, file_, plot_, dataset='davis'):
     c_size = len(seq)
     eds_seq = []
     if config.is_seq_in_graph:
@@ -121,7 +134,17 @@ def prot_to_graph(seq, prot_contactmap, prot_target, dataset='davis'):
         eds = np.concatenate((eds_seq, eds_d))
 
     edges = [tuple(i) for i in eds]
-    g = nx.Graph(edges).to_directed()
+    labels = {i:char for i,char in enumerate(seq)}
+    labels[c_size] = 'Res'
+    g = nx.Graph(edges)
+    if plot_:
+        try:
+            if not os.path.isdir('proteins'):
+                os.makedirs('proteins')
+            plot(g, labels, 'proteins/' + file_)     # Plot the molecular graph created
+        except:
+            pass 
+    g = g.to_directed()
     features = []
     ss_feat = []
     sas_feat = []

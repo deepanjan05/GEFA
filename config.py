@@ -10,3 +10,5 @@ cuda = 0
 setting = 0
 LR = 0.0005
 dataset = 'davis'
+to_plot_drug = True
+to_plot_prot = False
