@@ -53,8 +53,7 @@ class HGANLayer(nn.Module):
         # One GAT layer for each meta path based adjacency matrix
         self.gat_layers = nn.ModuleList()
         for i in range(num_meta_paths):
-            self.gat_layers.append(GATConv(in_size, out_size, layer_num_heads,
-                                           dropout, dropout, activation=F.elu))
+            self.gat_layers.append(GATConv(in_size, out_size, heads=layer_num_heads, dropout=dropout))
         self.semantic_attention = SemanticAttention(in_size=out_size * layer_num_heads)
         self.num_meta_paths = num_meta_paths
 
