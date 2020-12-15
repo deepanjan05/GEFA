@@ -8,8 +8,6 @@ from torch_geometric.utils import to_dense_batch
 from torch_geometric.nn import GATConv
 import time
 
-from dgl.nn.pytorch import GATConv
-
 class ResidualBlock(torch.nn.Module):
     def __init__(self, outfeature):
         super(ResidualBlock, self).__init__()
@@ -88,8 +86,8 @@ class GEFA_HGAN(torch.nn.Module):
         self.layers = nn.ModuleList()
         self.layers.append(HGANLayer(num_meta_paths, num_features_xd, num_features_xd, 12, dropout))
         self.layers.append(HGANLayer(num_meta_paths, num_features_xd * 12, latent_dim * 2, 10, dropout))
-        self.layers.append(HGANLayer(num_meta_paths, num_features_xd * 10, latent_dim * 2, 8, dropout))
-        self.layers.append(HGANLayer(num_meta_paths, num_features_xd * 8, latent_dim * 2, 6, dropout))
+        self.layers.append(HGANLayer(num_meta_paths, latent_dim * 2 * 10, latent_dim * 2, 6, dropout))
+        self.layers.append(HGANLayer(num_meta_paths, latent_dim * 2 * 6, latent_dim * 2, 1, dropout))
         self.fc_g1 = nn.Linear(latent_dim * 2, latent_dim * 2)
 
         # SMILES graph branch
