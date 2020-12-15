@@ -16,6 +16,7 @@ from metrics import *
 from models.GEFA import GEFA
 from models.GLFA import GLFA
 from models.GEFA_HGAN import GEFA_HGAN
+import matplotlib.pyplot as plt
 
 num_feat_xp = 0
 num_feat_xd = 0
@@ -278,8 +279,12 @@ if from_resume:
 else:
     start_epoch = 0
 lr_adjust_patience = 0
+train_losses = []
 for epoch in range(start_epoch, config.NUM_EPOCHS):
     train_loss = train(model, device, train_loader, optimizer, epoch + 1)
+    if max_loss < train_loss:
+        max_loss = train_loss
+    train_losses.append(train_loss)
     G, P = predicting(model, device, valid_loader)
     ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P), ci(G, P)]
     # save the best model based on rmse on validation data
@@ -315,9 +320,38 @@ for epoch in range(start_epoch, config.NUM_EPOCHS):
               best_mse, best_ci, model_st, dataset, LR)
         lr_adjust_patience += 1
 
+    if (epoch+1)%50==0:
+        try:
+            plt.clf()
+            plt.plot(train_losses, color='r', label='MSE')
+            plt.xlabel('Epoch')
+            plt.ylabel('MSE')
+            plt.axis([1, config.NUM_EPOCHS, 0, max_loss])
+            plt.savefig('training_loss_'+ str(epoch+1) +'.png')
+            print('Training Loss curve till now saved as training_loss_'+ str(epoch+1) +'.png')
+            plt.cla()
+        except:
+            pass
+
 # test
 model.load_state_dict(torch.load(model_file_name)['state_dict'], strict=False)
 G, P = predicting(model, device, test_loader)
+try:
+    if dataset=='davis': 
+        plt.clf()
+        plt.plot(P.tolist(), G.tolist(), color='bo')
+        x = np.linspace(4, 12, 2000)
+        plt.plot(x, x, '-r', label='Ideal case curve')
+        plt.xlabel('Predicted Values')
+        plt.ylabel('Measured Values')
+        plt.axis([4, 12, 4, 12])
+        plt.savefig('prediction_' + dataset + '.png')
+        print('Predictions from our model against measured (real) binding affinity values for Davis dataset saved as prediction_' + dataset + '.png')
+except:
+    pass
+
 ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P), ci(G, P)]
 with open(result_file_name, 'w') as f:
     f.write(','.join(map(str, ret)))
+
+
