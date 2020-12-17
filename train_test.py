@@ -274,71 +274,76 @@ result_file_name = 'saved_model/' + setting[1:] + '/result_' + model_st + '_' + 
                    + setting + '.csv'
 
 # new training
-if from_resume:
-    best_mse, best_ci, start_epoch, optimizer, model, LR = resume(model, optimizer, model_file_name)
-else:
-    start_epoch = 0
-lr_adjust_patience = 0
-train_losses = []
-for epoch in range(start_epoch, config.NUM_EPOCHS):
-    train_loss = train(model, device, train_loader, optimizer, epoch + 1)
-    if max_loss < train_loss:
-        max_loss = train_loss
-    train_losses.append(train_loss)
-    G, P = predicting(model, device, valid_loader)
-    ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P), ci(G, P)]
-    # save the best model based on rmse on validation data
-    if set_num == 0:
-        if lr_adjust_patience > 40:
-            LR = adjust_learning_rate(optimizer, LR, 0.8)
-            lr_adjust_patience = 0
-    if ret[1] < best_mse:
-        best_epoch = epoch + 1
-        best_mse = ret[1]
-        best_ci = ret[-1]
-        G_t, P_t = predicting(model, device, test_loader)
-        ret_test = [rmse(G_t, P_t), mse(G_t, P_t), pearson(G_t, P_t), spearman(G_t, P_t), ci(G_t, P_t)]
-        # writer.add_scalar('RMSE/test', ret[1], epoch)
-        with open(result_file_name, 'w') as f:
-            f.write(','.join(map(str, ret_test)))
-        print('RMSE improved at epoch ', best_epoch, '; best_mse, best_ci:',
-              best_mse, best_ci, model_st, dataset)
-        lr_adjust_patience = 0
-        save_checkpoint(state={
-            'epoch': epoch + 1,
-            'best_epoch': best_epoch,
-            'arch': model_st,
-            'state_dict': model.state_dict(),
-            'best_mse': best_mse,
-            'best_ci': best_ci,
-            'optimizer': optimizer.state_dict(),
-            'LR': LR},
-            filename=model_file_name
-        )
-    else:
-        print(ret[1], 'No improvement since epoch ', best_epoch, '; best_mse, best_ci:',
-              best_mse, best_ci, model_st, dataset, LR)
-        lr_adjust_patience += 1
+# if from_resume:
+#     best_mse, best_ci, start_epoch, optimizer, model, LR = resume(model, optimizer, model_file_name)
+# else:
+#     start_epoch = 0
+# lr_adjust_patience = 0
+# train_losses = []
+# max_loss = 0
+# for epoch in range(start_epoch, config.NUM_EPOCHS):
+#     train_loss = train(model, device, train_loader, optimizer, epoch + 1)
+#     if max_loss < train_loss:
+#         max_loss = train_loss
+#     train_losses.append(train_loss)
+#     G, P = predicting(model, device, valid_loader)
+#     ret = [rmse(G, P), mse(G, P), pearson(G, P), spearman(G, P), ci(G, P)]
+#     # save the best model based on rmse on validation data
+#     if set_num == 0:
+#         if lr_adjust_patience > 40:
+#             LR = adjust_learning_rate(optimizer, LR, 0.8)
+#             lr_adjust_patience = 0
+#     if ret[1] < best_mse:
+#         best_epoch = epoch + 1
+#         best_mse = ret[1]
+#         best_ci = ret[-1]
+#         G_t, P_t = predicting(model, device, test_loader)
+#         ret_test = [rmse(G_t, P_t), mse(G_t, P_t), pearson(G_t, P_t), spearman(G_t, P_t), ci(G_t, P_t)]
+#         # writer.add_scalar('RMSE/test', ret[1], epoch)
+#         with open(result_file_name, 'w') as f:
+#             f.write(','.join(map(str, ret_test)))
+#         print('RMSE improved at epoch ', best_epoch, '; best_mse, best_ci:',
+#               best_mse, best_ci, model_st, dataset)
+#         lr_adjust_patience = 0
+#         save_checkpoint(state={
+#             'epoch': epoch + 1,
+#             'best_epoch': best_epoch,
+#             'arch': model_st,
+#             'state_dict': model.state_dict(),
+#             'best_mse': best_mse,
+#             'best_ci': best_ci,
+#             'optimizer': optimizer.state_dict(),
+#             'LR': LR},
+#             filename=model_file_name
+#         )
+#     else:
+#         print(ret[1], 'No improvement since epoch ', best_epoch, '; best_mse, best_ci:',
+#               best_mse, best_ci, model_st, dataset, LR)
+#         lr_adjust_patience += 1
 
-    if (epoch+1)%50==0:
-        try:
-            plt.clf()
-            plt.plot(train_losses, color='r', label='MSE')
-            plt.xlabel('Epoch')
-            plt.ylabel('MSE')
-            plt.axis([1, config.NUM_EPOCHS, 0, max_loss])
-            plt.savefig('training_loss_'+ str(epoch+1) +'.png')
-            print('Training Loss curve till now saved as training_loss_'+ str(epoch+1) +'.png')
-            plt.cla()
-        except:
-            pass
+#     if (epoch+1)%50==0:
+#         try:
+#             plt.plot(train_losses, color='r', label='MSE')
+#             plt.xlabel('Epoch')
+#             plt.ylabel('MSE')
+#             plt.axis([1, len(train_losses), 0, 1])
+#             plt.savefig('training_loss_'+ str(epoch+1) +'.png')
+#             print('Training Loss curve till now saved as training_loss_'+ str(epoch+1) +'.png')
+#             plt.clf()
+#         except:
+#             pass
 
 # test
 model.load_state_dict(torch.load(model_file_name)['state_dict'], strict=False)
 G, P = predicting(model, device, test_loader)
 try:
-    if dataset=='davis': 
-        plt.clf()
+    if dataset=='davis':
+        # Save plot data in txt file
+        with open('Test_result.txt', 'w') as f:
+            f.write(str(P.tolist()))
+            f.write('\n')
+            f.write(str(G.tolist()))
+
         plt.plot(P.tolist(), G.tolist(), color='bo')
         x = np.linspace(4, 12, 2000)
         plt.plot(x, x, '-r', label='Ideal case curve')
@@ -346,6 +351,7 @@ try:
         plt.ylabel('Measured Values')
         plt.axis([4, 12, 4, 12])
         plt.savefig('prediction_' + dataset + '.png')
+        plt.clf()
         print('Predictions from our model against measured (real) binding affinity values for Davis dataset saved as prediction_' + dataset + '.png')
 except:
     pass
